@@ -1,0 +1,244 @@
+#ifndef __RISCV_H__
+#define __RISCV_H__
+#include "types.h"
+
+/* 
+ *  register operation of multi-task.
+ */
+static void w_mscratch(reg_t x){
+	asm volatile("csrw mscratch, %0" : : "r" (x));
+}
+
+static reg_t r_mscratch(){
+	reg_t ret;
+	asm volatile("csrr  %0, mscratch" :  "=r" (ret):);
+	return ret;
+}
+//mscratch register is a csr register, stand for the address of the 
+//   context of the current task
+static reg_t r_satp(){
+	reg_t ret;
+	asm volatile("csrr  %0, satp" :  "=r" (ret):);
+	return ret;
+}
+
+
+/* 
+ *  register operation of trap and interruption
+ */
+
+static inline reg_t r_tp(){
+    reg_t ret;
+    asm volatile("mv %0, tp" :"=r" (ret));
+    return ret;
+}
+//tp register stand for the index of the current hart.
+//similar with r_mhartid below.but i dont know whats the difference
+
+
+static inline reg_t r_mhartid(){
+	reg_t x;
+	asm volatile("csrr %0, mhartid" : "=r" (x) );
+	return x;
+}
+
+/* Machine Status Register, mstatus */
+#define MSTATUS_MPP (3 << 11)
+#define MSTATUS_SPP (1 << 8)
+
+#define MSTATUS_MPIE (1 << 7)
+#define MSTATUS_SPIE (1 << 5)
+#define MSTATUS_UPIE (1 << 4)
+
+#define MSTATUS_MIE (1 << 3)
+#define MSTATUS_SIE (1 << 1)
+#define MSTATUS_UIE (1 << 0)
+
+static inline reg_t r_mxstatus(){
+	reg_t x;
+	asm volatile("csrr %0, 0x7c0" : "=r" (x) );
+	return x;
+}
+static inline reg_t r_mstatus(){
+	reg_t x;
+	asm volatile("csrr %0, mstatus" : "=r" (x) );
+	return x;
+}
+static inline void w_mstatus(reg_t x){
+	asm volatile("csrw mstatus, %0" : : "r" (x));
+}
+
+
+
+/* 
+ * mepc in machine mode, machine expection programmer counter
+ * stand for the address where we enter the interruption(pc)
+ * or pc + 4
+ */
+static inline void w_mepc(reg_t x){
+	asm volatile("csrw mepc, %0" : : "r" (x));
+}
+
+static inline reg_t r_mepc(){
+	reg_t ret;
+	asm volatile("csrr %0, mepc" : "=r" (ret));
+	return ret;
+}
+static inline reg_t r_mtval(){
+	reg_t ret;
+	asm volatile("csrr %0, mtval" : "=r" (ret));
+	return ret;
+}
+//the address of the interruption function
+static inline reg_t r_mtvec(){
+	reg_t ret;
+	asm volatile("csrr  %0, mtvec" :  "=r" (ret):);
+	return ret;
+}
+static inline void w_mtvec(reg_t x){
+	asm volatile("csrw   mtvec, %0" :  :"r" (x):);
+}
+static inline reg_t r_pmpaddr0(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr0" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr1(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr1" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr2(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr2" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr3(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr3" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr4(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr4" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr5(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr5" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr6(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr6" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpaddr7(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpaddr7" :  "=r" (ret):);
+	return ret;
+}
+static inline reg_t r_pmpcfg0(){
+	reg_t ret;
+	asm volatile("csrr  %0, pmpcfg0" :  "=r" (ret):);
+	return ret;
+}
+static inline void w_pmpcfg0(reg_t data){
+	asm volatile("csrw pmpcfg0, %0" : : "r" (data));
+}
+static inline void w_pmpaddr0(reg_t data){
+	asm volatile("csrw pmpaddr0, %0" : : "r" (data));
+}
+static inline void w_pmpaddr1(reg_t data){
+	asm volatile("csrw pmpaddr1, %0" : : "r" (data));
+}
+static inline void w_pmpaddr2(reg_t data){
+	asm volatile("csrw pmpaddr2, %0" : : "r" (data));
+}
+static inline void w_pmpaddr3(reg_t data){
+	asm volatile("csrw pmpaddr3, %0" : : "r" (data));
+}
+static inline void w_pmpaddr4(reg_t data){
+	asm volatile("csrw pmpaddr4, %0" : : "r" (data));
+}
+static inline void w_pmpaddr5(reg_t data){
+	asm volatile("csrw pmpaddr5, %0" : : "r" (data));
+}
+static inline void w_pmpaddr6(reg_t data){
+	asm volatile("csrw pmpaddr6, %0" : : "r" (data));
+}
+static inline void w_pmpaddr7(reg_t data){
+	asm volatile("csrw pmpaddr7, %0" : : "r" (data));
+}
+
+
+
+/* Machine-mode Interrupt Enable */
+// set mstatus first and then mie.
+#define MIE_MEIE (1 << 11) // external
+#define MIE_MTIE (1 << 7)  // timer
+#define MIE_MSIE (1 << 3)  // software
+static inline reg_t r_mie()
+{
+	reg_t x;
+	asm volatile("csrr %0, mie" : "=r" (x) );
+	return x;
+}
+
+static inline reg_t r_mip()
+{
+	reg_t x;
+	asm volatile("csrr %0, mip" : "=r" (x) );
+	return x;
+}
+
+static inline void w_mie(reg_t x)
+{
+	asm volatile("csrw mie, %0" : : "r" (x));
+}
+
+/* Machine-mode Cause Masks */
+#define MCAUSE_MASK_INTERRUPT	(reg_t)0x8000000000000000
+#define MCAUSE_MASK_ECODE	(reg_t)0x7FFFFFFF
+//which interruption. for example ,uart
+static inline reg_t r_mcause()
+{
+	reg_t x;
+	asm volatile("csrr %0, mcause" : "=r" (x) );
+	return x;
+}
+static inline reg_t r_time(){
+	reg_t ret;
+	asm volatile("csrr %0, time" : "=r" (ret)); 
+	return ret;
+}
+static inline void w_msip(int hartid, int x){
+	*(uint32_t*)CLINT_MSIP(hartid) = x;
+}
+
+static inline reg_t r_mtimecmp(){
+	reg_t hartid = r_mhartid();
+	return (((uint64_t)*(uint32_t*)CLINT_MTIMECMPH(hartid)) << 32) + ((uint64_t)*(uint32_t*)CLINT_MTIMECMPL(hartid));
+}
+static inline void w_mtimecmp(reg_t timecmp){
+	reg_t hartid = r_mhartid();
+	*(uint32_t*)CLINT_MTIMECMPH(hartid) = ((timecmp >> 32) & 0xffffffff);
+	*(uint32_t*)CLINT_MTIMECMPL(hartid) = (timecmp & 0xffffffff);
+}
+#define MSTATUS_MPP_MACHINE		3
+#define MSTATUS_MPP_USER		0
+static inline void w_mstatus_MPP(uint8_t mpp){
+	reg_t mstatus = r_mstatus();
+	switch (mpp){
+		case MSTATUS_MPP_MACHINE:
+		mstatus |= (3 << 11);
+		break;
+		case MSTATUS_MPP_USER:
+		mstatus &= 	~(3 << 11);
+		break;
+		default:
+		break;
+	}
+	w_mstatus(mstatus);
+}
+#endif

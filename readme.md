@@ -1,6 +1,8 @@
 # Glorious Risc-v on LicheePi4A - OS (c906 version)
 ## -1. 勘误
 暂无
+## -0.5. 更新
+- 2024.7.22 第一次更新，加入[GROL-OS](https://github.com/GuoYS0010/GROL-OS)项目中09文件夹部分，即加入user特权模式后的系统调用，以及信号量、软中断。
 ## 0. 前言
 ### 这个项目是什么
 我自己写了一个简易操作系统（GROL-OS），然后用开源的C906的RTL代码在fpga上搭建了一个简易的SOC，并成功的把GROL-OS移植到了基于C906的简易SOC上。这个项目和我之前的项目一样，是个教程性质/工作笔记性质的项目，并承接了前几个项目的进度。他们的时间逻辑如下：  
@@ -14,7 +16,8 @@
 - C906的总线协议用的是axi,能直接和xilinx的各种axi总线连上，很方便，不像E906一样，要搞一个ahb-axi的转接。
 - C906是rv64，GROL-OS也是rv64，能很方便的移植。
 ### GROL-OS的最终移植情况
-基础功能都能成功移植，但是最后一章系统调用无法成功移植。因为user模式下能够访问的指令空间需要在MMU上配置，这块内容我还没有学习，所以暂时省去。抢占式多任务的内容能够成功运行。
+~~基础功能都能成功移植，但是最后一章系统调用无法成功移植。因为user模式下能够访问的指令空间需要在MMU上配置，这块内容我还没有学习，所以暂时省去。抢占式多任务的内容能够成功运行。~~  
+GROL-OS项目中的所有功能都成功移植。
 ### 前置知识
 - [GROL-OS](https://github.com/GuoYS0010/GROL-OS)中关于操作系统的简单知识
 - [hello_e906_zcu104](https://github.com/GuoYS0010/hello_e906_zcu104)中关于soc构建、fpga运行的知识
@@ -94,6 +97,46 @@ C906的RTL代码在github上[开源](https://github.com/XUANTIE-RV/openc906)了�
   
   #define CLINT_TIMEBASE_FREQ 100000000
   ```
+### 关于PMP
+risv中有个内存保护机制，即：machine模式下，cpu可以访问所有地址。但是再user模式下，对某个地址的读写操作是被禁止的（如果不配置的话）。这块内容会讲述如何配置PMP。  
 
+PMP全程`Physical Memory Protection`，也就是物理地址保护模块。他的作用就是：给内存的不同区域不同的权限。默认情况下，user模式对任何地址都没有读写权限。所以就需要配置。
+
+PMP需要用到的寄存器参考[用户手册](/doc/玄铁C906用户手册(openc906)_20240627.pdf)，其中讲到了两个状态寄存器。`pmpcfg0`寄存器有64位，分成八个八位，管理八段内存空间的属性；`pmpaddr0-7`八个寄存器可以描述八段内存空间。具体什么意思我就不在这儿说了，我把这两个寄存器配置的代码放在下面。
+```c
+void pmp_init(){
+    // pmpaddr0,0x0 ~ 0xf0000000, TOR 模式，读写可执行权限
+    //li x3, (0xf0000000 >> 2)
+    //csrw pmpaddr0, x3
+    w_pmpaddr0((0xf0000000 >> 2));
+    // pmpaddr1,0xf0000000 ~ 0xf8000000, NAPOT 模式，读写权限
+    //li x3, ( 0xf0000000 >> 2 | (0x8000000-1) >> 3))
+    //csrw pmpaddr1, x3
+    w_pmpaddr1( 0xf0000000 >> 2 | (0x8000000-1) >> 3);
+    // pmpaddr2,0xfff73000 ~ 0xfff74000, NAPOT 模式，读写权限
+    //li x3, ( 0xfff73000 >> 2 | (0x1000-1) >> 3))
+    //csrw pmpaddr2, x3
+    w_pmpaddr2( 0xfff73000 >> 2 | (0x1000-1) >> 3);
+    // pmpaddr3,0xfffc0000 ~ 0xfffc2000, NAPOT 模式，读写权限
+    //li x3, ( 0xfffc0000 >> 2 | (0x2000-1) >> 3))
+    //csrw pmpaddr3, x3
+    w_pmpaddr3( 0xfffc0000 >> 2 | (0x2000-1) >> 3);
+    // pmpaddr4,0xf0000000 ~ 0x100000000, NAPOT 模式，无任何权限
+    //li x3, ( 0xf0000000 >> 2 | (0x10000000-1) >> 3))
+    //csrw pmpaddr4, x3
+    w_pmpaddr4( 0xf0000000 >> 2 | (0x10000000-1) >> 3);
+    // pmpaddr5,0x100000000 ~ 0xffffffffff, TOR 模式，无任何权限
+    //li x3, (0xffffffffff >> 2)
+    //csrw pmpaddr5, x3
+    w_pmpaddr5(0xffffffffff >> 2);
+    //PMPCFG0, 配置各表项执行权限/模式/lock 位,
+    //lock 为 1 时，该表项在机器模式下才有效
+    //li x3,0x08989b9b9b8f
+    //csrw pmpcfg0, x3
+    w_pmpcfg0(0x08989b9b9b8f);
+    printf("PMP initialization finished\n\r");
+}
+```
+我的代码再[用户手册](/doc/玄铁C906用户手册(openc906)_20240627.pdf)的基础上有改变，主要是改变了`pmpcfg0`的值。我把`pmpaddr5`对应的`cfg`从88改成了08，这样机器模式就对这段空间有读写的权限了，而这段空间对应的是clint和plic的地址，是需要machine读写的。经过这些配置，09项目也跑通了，在fpga上实现了信号量、系统调用以及软件计时器。
 ## 3.结尾
 硬件的学习告一段落，之后继续系学习操作系统的编写，主要学习虚拟地址MMU这部分的内容，把文件系统也写了，等这些东西学完了再尝试硬件上的部署。
